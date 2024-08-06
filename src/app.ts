@@ -14,14 +14,23 @@ class Project {
 }
 
 // Gestion de l'état de l'application
-type Listener = (items: Project[]) => void;
+type Listener<T> = (items: T[]) => void;
 
-class ProjectState {
+abstract class State<T> {
+  protected listeners: Listener<T>[] = []; 
+
+  addListener(listernerFunction: Listener<T>) { 
+    this.listeners.push(listernerFunction);
+  }
+}
+
+class ProjectState extends State<Project> {
   private static instance: ProjectState;
-  private projects: Project[] = []; // Données dont l'état est géré
-  private listeners: Listener[] = []; // Liste de fonctions qui seront jouées lors d'un changement d'état
+  private projects: Project[] = [];
 
-  private constructor() {}
+  private constructor() {
+    super();
+  }
 
   static getInstance() {
     if (this.instance) return this.instance;
@@ -30,9 +39,6 @@ class ProjectState {
     return this.instance;
   }
 
-  addListener(listernerFunction: Listener) { // On donne la possibilité à l'extérieur d'ajouter des fonctions à jouer lors du changement d'état
-    this.listeners.push(listernerFunction);
-  }
   addProject(title: string, description: string, numOfPeople: number) {
     const newProject = new Project(
       Math.random().toString(), 
@@ -42,10 +48,8 @@ class ProjectState {
       ProjectStatus.Active
     );
 
-    this.projects.push(newProject); // L'état change
+    this.projects.push(newProject); 
 
-    // On appelle les fonctions qui doivent être jouées lors d'un changement d'état
-    // On leur passe en paramètre le nouvel état
     for (const listernerFunction of this.listeners) {
       listernerFunction(this.projects.slice());
     }
