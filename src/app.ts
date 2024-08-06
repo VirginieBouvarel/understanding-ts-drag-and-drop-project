@@ -1,7 +1,22 @@
+enum ProjectStatus { 
+  Active, 
+  Finished 
+}
+
+class Project {
+  constructor(
+    public id: string, 
+    public title: string, 
+    public description: string, 
+    public people: number, 
+    public status: ProjectStatus,
+  ) {}
+}
+
 // Gestion de l'état de l'application
 class ProjectState {
   private static instance: ProjectState;
-  private projects: any[] = []; // Données dont l'état est géré
+  private projects: Project[] = []; // Données dont l'état est géré
   private listeners: any[] = []; // Liste de fonctions qui seront jouées lors d'un changement d'état
 
   private constructor() {}
@@ -17,12 +32,14 @@ class ProjectState {
     this.listeners.push(listernerFunction);
   }
   addProject(title: string, description: string, numOfPeople: number) {
-    const newProject = {
-      id: Math.random().toString(),
-      title,
-      description,
-      people: numOfPeople,
-    };
+    const newProject = new Project(
+      Math.random().toString(), 
+      title, 
+      description, 
+      numOfPeople, 
+      ProjectStatus.Active
+    );
+
     this.projects.push(newProject); // L'état change
 
     // On appelle les fonctions qui doivent être jouées lors d'un changement d'état
@@ -84,7 +101,7 @@ class ProjectList {
     hostElement: HTMLDivElement;
     element: HTMLElement;
 
-    assignedProjects: any[];
+    assignedProjects: Project[];
 
   constructor(private type: 'active' | 'finished') {
     this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement;
