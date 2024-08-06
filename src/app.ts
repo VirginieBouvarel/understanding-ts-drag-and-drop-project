@@ -129,12 +129,20 @@ class ProjectList {
 
   @AutoBind
   private projectsListHandler(projects: Project[]) {
-    this.assignedProjects = projects;
+    const relevantProjects = projects.filter(project => {
+      if (this.type === 'active') {
+        return project.status === ProjectStatus.Active;
+      } else {
+        return project.status === ProjectStatus.Finished;
+      }
+    })
+    this.assignedProjects = relevantProjects;
     this.renderProjects();
   }
 
   private renderProjects() {
     const listElement = document.getElementById(`${this.type}-projects-list`)! as HTMLUListElement;
+    listElement.innerHTML = '';
     for (const prjItem of this.assignedProjects) {
       const listItem = document.createElement('li');
       listItem.textContent = prjItem.title;
