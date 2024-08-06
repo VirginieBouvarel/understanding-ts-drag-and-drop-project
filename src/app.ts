@@ -1,3 +1,40 @@
+// Gestion de l'état de l'application
+class ProjectState {
+  private static instance: ProjectState;
+  private projects: any[] = []; // Données dont l'état est géré
+  private listeners: any[] = []; // Liste de fonctions qui seront jouées lors d'un changement d'état
+
+  private constructor() {}
+
+  static getInstance() {
+    if (this.instance) return this.instance;
+
+    this.instance = new ProjectState();
+    return this.instance;
+  }
+
+  addListener(listernerFunction: Function) { // On donne la possibilité à l'extérieur d'ajouter des fonctions à jouer lors du changement d'état
+    this.listeners.push(listernerFunction);
+  }
+  addProject(title: string, description: string, numOfPeople: number) {
+    const newProject = {
+      id: Math.random().toString(),
+      title,
+      description,
+      people: numOfPeople,
+    };
+    this.projects.push(newProject); // L'état change
+
+    // On appelle les fonctions qui doivent être jouées lors d'un changement d'état
+    // On leur passe en paramètre le nouvel état
+    for (const listernerFunction of this.listeners) {
+      listernerFunction(this.projects.slice());
+    }
+  }
+}
+
+const projectState = ProjectState.getInstance();
+
 // Validation des champs de formulaire
 interface Validatable {
   value: string | number;
@@ -40,7 +77,64 @@ function AutoBind(_target: any, _methodName: string, descriptor: PropertyDescrip
   return newDescriptor;
 }
 
-// Classe principale
+// liste de projets
+class ProjectList {
+    // DOM elements
+    templateElement: HTMLTemplateElement;
+    hostElement: HTMLDivElement;
+    element: HTMLElement;
+
+    assignedProjects: any[];
+
+  constructor(private type: 'active' | 'finished') {
+    this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement;
+    this.hostElement = document.getElementById('app')! as HTMLDivElement;
+    this.assignedProjects = [];
+
+    const importedNode = document.importNode(this.templateElement.content, true);
+    this.element = importedNode.firstElementChild as HTMLElement;
+    this.element.id = `${this.type}-projects`;
+
+    // On demande à la classe projectState d'ajouter une nouvelle signature de fonction dans sa liste d'écouteurs à jouer lors d'un changement d'état
+		// Cette fonction recevra en paramètres une liste de projet (aka le nouvel état)
+		// Comme elle est autobindée this se réfèrera à sa classe parente de définition
+		// Elle aura donc accès à assignedProjects et à renderProject()
+    // On pourrait aussi utiliser une fonction anonyme fléchée ici
+    // Car leur this est bindé automatiquement
+    projectState.addListener(this.projectsListHandler);
+
+    this.attach();
+    this.renderContent();
+
+  }
+
+  @AutoBind
+  private projectsListHandler(projects: any[]) {
+    this.assignedProjects = projects;
+    this.renderProjects();
+  }
+
+  private renderProjects() {
+    const listElement = document.getElementById(`${this.type}-projects-list`)! as HTMLUListElement;
+    for (const prjItem of this.assignedProjects) {
+      const listItem = document.createElement('li');
+      listItem.textContent = prjItem.title;
+      listElement.appendChild(listItem);
+    }
+  }
+
+  private renderContent() {
+    const listId = `${this.type}-projects-list`;
+    this.element.querySelector('ul')!.id = listId;
+    this.element.querySelector('h2')!.textContent = `${this.type.toUpperCase()} PROJECTS`;
+  }
+
+  private attach() {
+    this.hostElement.insertAdjacentElement('beforeend', this.element);
+  }
+}
+
+// Formulaire
 class ProjectInput {
   // DOM elements
   templateElement: HTMLTemplateElement;
@@ -126,10 +220,10 @@ class ProjectInput {
     // On vérifie les saisies utilisateur 
     const userInput = this.gatherUserInput();
 
-    // Si tout est ok on traite les données puis on vide le formulaire
+    // Si tout est ok on demande à la classe projectState d'ajouter le projet crée dans sa liste de projets, puis on vide le formulaire
     if (Array.isArray(userInput)) {
       const [title, description, people] = userInput;
-      console.log(title, description, people);
+      projectState.addProject(title, description, people); // On appelle projectState pour lui demander une modification d'état
       this.clearInputs();
     }
   }
@@ -142,5 +236,6 @@ class ProjectInput {
 }
 
 const prjInput = new ProjectInput();
-
+const activePrjList = new ProjectList('active');
+const finishedPrjList = new ProjectList('finished');
 
