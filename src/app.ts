@@ -96,35 +96,58 @@ function AutoBind(_target: any, _methodName: string, descriptor: PropertyDescrip
   return newDescriptor;
 }
 
-// liste de projets
-class ProjectList {
-    // DOM elements
+// Component Base Class
+abstract class Component<T extends HTMLElement, U extends HTMLElement> {
     templateElement: HTMLTemplateElement;
-    hostElement: HTMLDivElement;
-    element: HTMLElement;
+    hostElement: T;
+    element: U;
 
+    constructor(
+      templateId: string, 
+      hostElementId: string, 
+      insertAtStart: boolean,
+      newElementId?: string,
+    ) {
+      this.templateElement = document.getElementById(templateId)! as HTMLTemplateElement;
+      this.hostElement = document.getElementById(hostElementId)! as T;
+
+      const importedNode = document.importNode(this.templateElement.content, true);
+      this.element = importedNode.firstElementChild as U;
+      if (newElementId) this.element.id = newElementId;
+
+      this.attach(insertAtStart);
+    }
+
+    private attach(insertAtBeginning: boolean) {
+      this.hostElement.insertAdjacentElement(
+        insertAtBeginning ? 'afterbegin' : 'beforeend', 
+        this.element
+      );
+    }
+    abstract configure(): void;
+    abstract renderContent(): void;
+}
+
+// liste de projets
+class ProjectList extends Component <HTMLDivElement, HTMLElement> {
     assignedProjects: Project[];
 
   constructor(private type: ProjectStatus) {
-    this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement;
-    this.hostElement = document.getElementById('app')! as HTMLDivElement;
+    super('project-list', 'app', false, `${type}-projects`);
     this.assignedProjects = [];
 
-    const importedNode = document.importNode(this.templateElement.content, true);
-    this.element = importedNode.firstElementChild as HTMLElement;
-    this.element.id = `${this.type}-projects`;
-
-    // On demande à la classe projectState d'ajouter une nouvelle signature de fonction dans sa liste d'écouteurs à jouer lors d'un changement d'état
-		// Cette fonction recevra en paramètres une liste de projet (aka le nouvel état)
-		// Comme elle est autobindée this se réfèrera à sa classe parente de définition
-		// Elle aura donc accès à assignedProjects et à renderProject()
-    // On pourrait aussi utiliser une fonction anonyme fléchée ici
-    // Car leur this est bindé automatiquement
-    projectState.addListener(this.projectsListHandler);
-
-    this.attach();
+    this.configure();
     this.renderContent();
+  }
 
+  configure() {
+    projectState.addListener(this.projectsListHandler);
+  }
+
+  renderContent() {
+    const listId = `${this.type}-projects-list`;
+    this.element.querySelector('ul')!.id = listId;
+    this.element.querySelector('h2')!.textContent = `${this.type.toUpperCase()} PROJECTS`;
   }
 
   @AutoBind
@@ -143,52 +166,28 @@ class ProjectList {
       listElement.appendChild(listItem);
     }
   }
-
-  private renderContent() {
-    const listId = `${this.type}-projects-list`;
-    this.element.querySelector('ul')!.id = listId;
-    this.element.querySelector('h2')!.textContent = `${this.type.toUpperCase()} PROJECTS`;
-  }
-
-  private attach() {
-    this.hostElement.insertAdjacentElement('beforeend', this.element);
-  }
 }
 
 // Formulaire
-class ProjectInput {
-  // DOM elements
-  templateElement: HTMLTemplateElement;
-  hostElement: HTMLDivElement;
-  element: HTMLFormElement;
-  // Form fields
+class ProjectInput extends Component <HTMLDivElement, HTMLFormElement> {
   titleInputElement: HTMLInputElement;
   descriptionInputElement: HTMLInputElement;
   peopleInputElement: HTMLInputElement;
 
   constructor() {
-    // On récupère les éléments du DOM à manipuler
-    this.templateElement = document.getElementById('project-input')! as HTMLTemplateElement;
-    this.hostElement = document.getElementById('app')! as HTMLDivElement;
+    super('project-input', 'app', true, 'user-input');
 
-    // Dans le template project-input on récupère le noeud du formulaire 
-    const importedNode = document.importNode(this.templateElement.content, true);
-    this.element = importedNode.firstElementChild as HTMLFormElement;
-
-    // On gère le style si besoin -> #user-input dans app.css
-    this.element.id = 'user-input';
-
-    // On récupère chaque élément du formulaire pour pouvoir l'utiliser le moment venu
     this.titleInputElement = this.element.querySelector('#title') as HTMLInputElement;
     this.descriptionInputElement = this.element.querySelector('#description') as HTMLInputElement;
     this.peopleInputElement = this.element.querySelector('#people') as HTMLInputElement;
 
-    // On configure un écouteur d'évènement sur le submit du formulaire
     this.configure();
-
-    // On attache le noeud du formulaire dans la div app après son contenu existant
-    this.attach();
   }
+
+  configure() {
+    this.element.addEventListener('submit', this.submitHandler);
+  }
+  renderContent() {}
 
   private gatherUserInput(): [string, string, number] | void {
     // On récupère les saisies
@@ -247,12 +246,6 @@ class ProjectInput {
       projectState.addProject(title, description, people); // On appelle projectState pour lui demander une modification d'état
       this.clearInputs();
     }
-  }
-  private configure() {
-    this.element.addEventListener('submit', this.submitHandler);
-  }
-  private attach() {
-    this.hostElement.insertAdjacentElement('afterbegin', this.element);
   }
 }
 
