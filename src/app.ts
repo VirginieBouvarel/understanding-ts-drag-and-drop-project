@@ -14,10 +14,12 @@ class Project {
 }
 
 // Gestion de l'état de l'application
+type Listener = (items: Project[]) => void;
+
 class ProjectState {
   private static instance: ProjectState;
   private projects: Project[] = []; // Données dont l'état est géré
-  private listeners: any[] = []; // Liste de fonctions qui seront jouées lors d'un changement d'état
+  private listeners: Listener[] = []; // Liste de fonctions qui seront jouées lors d'un changement d'état
 
   private constructor() {}
 
@@ -28,7 +30,7 @@ class ProjectState {
     return this.instance;
   }
 
-  addListener(listernerFunction: Function) { // On donne la possibilité à l'extérieur d'ajouter des fonctions à jouer lors du changement d'état
+  addListener(listernerFunction: Listener) { // On donne la possibilité à l'extérieur d'ajouter des fonctions à jouer lors du changement d'état
     this.listeners.push(listernerFunction);
   }
   addProject(title: string, description: string, numOfPeople: number) {
@@ -126,7 +128,7 @@ class ProjectList {
   }
 
   @AutoBind
-  private projectsListHandler(projects: any[]) {
+  private projectsListHandler(projects: Project[]) {
     this.assignedProjects = projects;
     this.renderProjects();
   }
