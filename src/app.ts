@@ -1,6 +1,6 @@
 enum ProjectStatus { 
-  Active, 
-  Finished 
+  Active = "active", 
+  Finished = "finished"
 }
 
 class Project {
@@ -105,7 +105,7 @@ class ProjectList {
 
     assignedProjects: Project[];
 
-  constructor(private type: 'active' | 'finished') {
+  constructor(private type: ProjectStatus) {
     this.templateElement = document.getElementById('project-list')! as HTMLTemplateElement;
     this.hostElement = document.getElementById('app')! as HTMLDivElement;
     this.assignedProjects = [];
@@ -129,13 +129,7 @@ class ProjectList {
 
   @AutoBind
   private projectsListHandler(projects: Project[]) {
-    const relevantProjects = projects.filter(project => {
-      if (this.type === 'active') {
-        return project.status === ProjectStatus.Active;
-      } else {
-        return project.status === ProjectStatus.Finished;
-      }
-    })
+    const relevantProjects = projects.filter(project => project.status === this.type);
     this.assignedProjects = relevantProjects;
     this.renderProjects();
   }
@@ -263,6 +257,6 @@ class ProjectInput {
 }
 
 const prjInput = new ProjectInput();
-const activePrjList = new ProjectList('active');
-const finishedPrjList = new ProjectList('finished');
+const activePrjList = new ProjectList(ProjectStatus.Active);
+const finishedPrjList = new ProjectList(ProjectStatus.Finished);
 
