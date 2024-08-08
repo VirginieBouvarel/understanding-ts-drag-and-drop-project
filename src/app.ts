@@ -26,7 +26,7 @@ class Project {
   ) {}
 }
 
-// Gestion de l'état de l'application
+// Project State Management
 type Listener<T> = (items: T[]) => void;
 
 abstract class State<T> {
@@ -82,7 +82,7 @@ class ProjectState extends State<Project> {
 
 const projectState = ProjectState.getInstance();
 
-// Validation des champs de formulaire
+// Validation
 interface Validatable {
   value: string | number;
   required?: boolean;
@@ -112,7 +112,7 @@ function validate(validatableInput: Validatable) {
   return isValid;
 }
 
-// Décorateur Autobind
+// AutoBind decorator
 function AutoBind(_target: any, _methodName: string, descriptor: PropertyDescriptor) {
   const originalDescriptor = descriptor.value;
   const newDescriptor: PropertyDescriptor = {
@@ -156,7 +156,7 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
     abstract renderContent(): void;
 }
 
-// listitem pour afficher un projet
+// ProjectItem Class
 class ProjectItem extends Component <HTMLUListElement, HTMLLIElement> implements Draggable {
   private project: Project;
 
@@ -174,11 +174,7 @@ class ProjectItem extends Component <HTMLUListElement, HTMLLIElement> implements
 
   @AutoBind
   dragStartHandler(event: DragEvent): void {
-    // On attache des données sur l'objet déplacé (format + données) à l'event drag 
-    // Nativement le navigateur les transfèrera à l'event drop
-    // On ne prend que l'id pour éviter de stocker trop d'infos dans la méméoire du navigateur
     event.dataTransfer!.setData('text/plain', this.project.id); 
-    // On modifie l'apparence du curseur pour matérialiser la préhension de l'objet
     event.dataTransfer!.effectAllowed = "move"; 
   }
   @AutoBind
@@ -197,7 +193,7 @@ class ProjectItem extends Component <HTMLUListElement, HTMLLIElement> implements
   }
 }
 
-// liste de projets
+// ProjectList Class
 class ProjectList extends Component <HTMLDivElement, HTMLElement> implements DragTarget {
     assignedProjects: Project[];
 
@@ -211,24 +207,15 @@ class ProjectList extends Component <HTMLDivElement, HTMLElement> implements Dra
 
   @AutoBind
   dragOverHandler(event: DragEvent): void {
-    // On vérifie si un dépôt est bien autorisé ici
-    // En vérifiant si dataTransfert contient bien des données du type défini dans l'event drag
-    if (event.dataTransfer && event.dataTransfer.types[0] === 'text/plain') {
-      // On autorise le dépôt 
-      // En prévenant le comportement par défaut d'un élément déposé -> dépôt interdit
-      event.preventDefault();
-      const listElement = this.element.querySelector('ul')!;
-      listElement.classList.add('droppable');
+    if (!(event.dataTransfer && event.dataTransfer.types[0] === 'text/plain')) {
+      return;
     }
+    event.preventDefault();
+    const listElement = this.element.querySelector('ul')!;
+    listElement.classList.add('droppable');
   }
   @AutoBind
   dropHandler(event: DragEvent): void {
-    console.log('Drop');
-    // On vérifie si les données on bien été transférées depuis l'event drag (id)
-    // Car dès que l'event sera terminé la propriété dataTransfert sera vidée
-    // event.dataTransfert sera vide dans l'inspecteur
-    console.log(event.dataTransfer!.getData('text/plain')); 
-    // On récupère l'id du projet déplacé
     const projectId = event.dataTransfer!.getData('text/plain');
     projectState.moveProject(projectId, this.type);
   }
@@ -267,7 +254,7 @@ class ProjectList extends Component <HTMLDivElement, HTMLElement> implements Dra
   }
 }
 
-// Formulaire
+// ProjectInput Class
 class ProjectInput extends Component <HTMLDivElement, HTMLFormElement> {
   titleInputElement: HTMLInputElement;
   descriptionInputElement: HTMLInputElement;
@@ -289,7 +276,6 @@ class ProjectInput extends Component <HTMLDivElement, HTMLFormElement> {
   renderContent() {}
 
   private gatherUserInput(): [string, string, number] | void {
-    // On récupère les saisies
     const enteredTitle = this.titleInputElement.value;
     const enteredDescription = this.descriptionInputElement.value;
     const enteredPeople = this.peopleInputElement.value;
@@ -310,17 +296,14 @@ class ProjectInput extends Component <HTMLDivElement, HTMLFormElement> {
       max: 5 
     };
 
-    // On les valide (sommairement pour le moment)
     if (
       !validate(titleValidatable) ||
       !validate(descriptionValidatable) ||
       !validate(peopleValidatable)
     ) {
-      // Si un des valeur est invalide on ne retourne rien et on déclenche une alerte
       alert('Invalid input, please try again!');
       return;
     } else {
-      // Si tout est ok on retourne le tuple attendu
       return [enteredTitle, enteredDescription, +enteredPeople];
     }
 
@@ -331,24 +314,22 @@ class ProjectInput extends Component <HTMLDivElement, HTMLFormElement> {
     this.descriptionInputElement.value = '';
     this.peopleInputElement.value = '';
   }
-  // On force le binding du this sur la classe appelante
+
   @AutoBind 
   private submitHandler(event: Event) {
     event.preventDefault();
-
-    // On vérifie les saisies utilisateur 
     const userInput = this.gatherUserInput();
 
-    // Si tout est ok on demande à la classe projectState d'ajouter le projet crée dans sa liste de projets, puis on vide le formulaire
     if (Array.isArray(userInput)) {
       const [title, description, people] = userInput;
-      projectState.addProject(title, description, people); // On appelle projectState pour lui demander une modification d'état
+      projectState.addProject(title, description, people); 
       this.clearInputs();
     }
   }
 }
 
-const prjInput = new ProjectInput();
-const activePrjList = new ProjectList(ProjectStatus.Active);
-const finishedPrjList = new ProjectList(ProjectStatus.Finished);
+// Programme
+new ProjectInput();
+new ProjectList(ProjectStatus.Active);
+new ProjectList(ProjectStatus.Finished);
 
